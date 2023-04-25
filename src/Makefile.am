@@ -7,4 +7,5 @@ dvdbackup_SOURCES = main.c \
 	gettext.h
 
 dvdbackup_CFLAGS = -DFIND_UNUSED $(AM_CFLAGS) $(DEPS_CFLAGS)
-dvdbackup_LDADD = $(LIBINTL) -ldvdvm $(DEPS_LIBS)
+dvdbackup_LDFLAGS = $(DEPS_LIBS)
+dvdbackup_LDADD = $(LIBINTL)
