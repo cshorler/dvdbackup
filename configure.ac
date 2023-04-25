@@ -137,6 +137,27 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 	AC_MSG_FAILURE([failed to include dvdread_internal.h with dir $with_libdvdread_private_headers])
 ])
 
+dnl ----------------------------------------------------------
+dnl check if we should enable the db logging functionality
+dnl ----------------------------------------------------------
+
+AC_ARG_ENABLE([logdb],
+	[AS_HELP_STRING([--enable-logdb],
+		[enable experimental postgresql logging backend])],
+	[],
+	[enable_logdb=yes])
+
+AS_IF([test "x$enable_logdb" != xno], [
+	AC_CHECK_LIB([pq], [PQconnectdb], [],
+		[AC_MSG_FAILURE([--enable-logdb was given, but libpq was not found])])
+	AC_CHECK_HEADER([libpq-fe.h])
+	AS_IF([test "x$ac_cv_header_libpq_fe_h" != xyes], [CPPFLAGS="$CPPFLAGS -I/usr/include/pgsql"])
+	AS_UNSET([ac_cv_header_libpq_fe_h])
+	AC_CHECK_HEADERS([libpq-fe.h], [],
+		[AC_MSG_FAILURE([--enable-logdb was given, but can't find include path for libpq-fe.h, try setting CPPFLAGS manually])])
+
+	AC_DEFINE([ENABLE_LOGDB], [1], [define to 1 if the logdb backend should be enabled])
+])
 
 dnl ----------------------------------------------------------
 dnl Checks for library functions
