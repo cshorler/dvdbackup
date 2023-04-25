@@ -42,6 +42,8 @@
 #include <dvdread/ifo_read.h>
 
 #include "dvdread_internal.h"
+#define PRIV(a) container_of(a, struct ifo_handle_private_s, handle)
+
 #ifdef FIND_UNUSED
 #include "find-sector.h"
 #endif
@@ -1198,6 +1200,7 @@ static int DVDCopyIfoBup(dvd_reader_t* dvd, title_set_info_t* title_set_info, in
 
 	/* DVD handler */
 	ifo_handle_t* ifo_file = NULL;
+	struct ifo_handle_private_s *ifop = NULL;
 
 
 	if (title_set_info->number_of_title_sets + 1 < title_set) {
@@ -1274,7 +1277,8 @@ static int DVDCopyIfoBup(dvd_reader_t* dvd, title_set_info_t* title_set_info, in
 		return 1;
 	}
 
-	size = DVDFileSize(ifo_file->file) * DVD_VIDEO_LB_LEN;
+	ifop = PRIV(ifo_file);
+	size = DVDFileSize(ifop->file) * DVD_VIDEO_LB_LEN;
 
 	if ((buffer = (unsigned char *)malloc(size * sizeof(unsigned char))) == NULL) {
 		perror(PACKAGE);
@@ -1285,9 +1289,9 @@ static int DVDCopyIfoBup(dvd_reader_t* dvd, title_set_info_t* title_set_info, in
 		return 1;
 	}
 
-	DVDFileSeek(ifo_file->file, 0);
+	DVDFileSeek(ifop->file, 0);
 
-	if (DVDReadBytes(ifo_file->file,buffer,size) != size) {
+	if (DVDReadBytes(ifop->file,buffer,size) != size) {
 		fprintf(stderr, _("Error reading IFO for title set %d\n"), title_set);
 		ifoClose(ifo_file);
 		free(buffer);
