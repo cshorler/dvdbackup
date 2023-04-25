@@ -41,6 +41,7 @@
 #include <dvdread/dvd_reader.h>
 #include <dvdread/ifo_read.h>
 
+#include "dvdread_internal.h"
 #ifdef FIND_UNUSED
 #include "find-sector.h"
 #endif

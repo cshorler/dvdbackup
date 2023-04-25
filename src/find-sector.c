@@ -25,10 +25,10 @@ The intended use of this is to avoid potentially bad sectors that are perhaps cr
 //#include <dvdnav/remap.h>
 typedef struct remap_s remap_t;
 #include <dvdnav/dvd_types.h>
-#include <dvdnav/decoder.h>
-
 #include <dvdnav/dvdnav.h>
-#include <dvdnav/vm.h>
+
+#include "vm/decoder.h"
+#include "vm/vm.h"
 
 #include <config.h>
 
