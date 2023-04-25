@@ -15,7 +15,7 @@ AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([dist-xz -Wall -Werror])
 
-AM_GNU_GETTEXT_VERSION([0.17])
+AM_GNU_GETTEXT_VERSION([0.20.2])
 AM_GNU_GETTEXT([external])
 
 AM_MAINTAINER_MODE
@@ -85,6 +85,58 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
 [[#include <dvdnav/dvd_types.h>
 DVDDomain_t t = DVD_DOMAIN_FirstPlay;]]
 )], AC_DEFINE(HAVE_DVDNAV_DVDDOMAIN_TYPE, [1], [have dvdnav DVDDomain_t]))
+
+dnl ----------------------------------------------------------
+dnl Check for mandatory static libs
+dnl ----------------------------------------------------------
+
+AC_MSG_CHECKING([for libdvdnav static lib])
+LIBS="-Wl,-Bstatic -ldvdnav -Wl,-Bdynamic $LIBS"
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[char vm_reset();]], [[return vm_reset();]])], [
+	AC_MSG_RESULT([yes])
+],[
+	AC_MSG_FAILURE([unable to link to libdvdnav static library])
+])
+
+dnl ----------------------------------------------------------
+dnl Check for mandatory private headers
+dnl ----------------------------------------------------------
+
+AC_ARG_WITH([libdvdnav-private-headers], [
+	AS_HELP_STRING([--with-libdvdnav-private-headers], [path to debugsource / private headers for libdvdnav])
+],[],[
+	with_libdvdnav_private_headers="$(set -- /usr/src/debug/libdvdnav*/src; echo $1)"
+])
+
+AC_ARG_WITH([libdvdread-private-headers], [
+	AS_HELP_STRING([--with-libdvdread-private-headers], [path to debugsource / private headers for libdvdread]),
+],[],[
+	with_libdvdread_private_headers="$(set -- /usr/src/debug/libdvdread*/src; echo $1)"
+])
+
+AC_MSG_CHECKING([libdvdnav private headers])
+CFLAGS="-iquote $with_libdvdnav_private_headers $CFLAGS"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+	#include <dvdnav/dvdnav.h>
+	#include "vm/decoder.h"
+	#include "vm/vm.h"
+	]], [])], [
+	AC_MSG_RESULT([$with_libdvdnav_private_headers])
+],[
+	AC_MSG_FAILURE([failed to include vm/vm.h with dir $with_libdvdnav_private_headers])
+])
+
+AC_MSG_CHECKING([libdvdread private headers])
+CFLAGS="-iquote $with_libdvdread_private_headers $CFLAGS"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+	#include <dvdread/dvd_reader.h>
+	#include "dvdread_internal.h"
+	]], [])], [
+	AC_MSG_RESULT([$with_libdvdread_private_headers])
+],[
+	AC_MSG_FAILURE([failed to include dvdread_internal.h with dir $with_libdvdread_private_headers])
+])
+
 
 dnl ----------------------------------------------------------
 dnl Checks for library functions
