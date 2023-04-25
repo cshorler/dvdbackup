@@ -1,7 +1,7 @@
 
 dvdbackupx modification by Don Mahurin.
 
-dvdbackupx-0.2 is based on dvdbackup-0.2
+dvdbackupx-0.4.2 is based on dvdbackup-0.4.2
 
 Description:
 
@@ -30,3 +30,9 @@ that could only be seen by a full vm.
 The instruction detection could be avoided if libdvdvm could provided functions
 that execute a command and end with a state that describes a jump, but does not
 execute it.
+
+Compilation
+needs libdvdread 8
+requires libdvdnav static library to build
+manual / auto-detection of debug sources / private headers.
+
