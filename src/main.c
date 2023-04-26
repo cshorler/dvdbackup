@@ -21,6 +21,10 @@
 #include <config.h>
 #include "dvdbackup.h"
 
+#ifdef ENABLE_LOGDB
+#include "logdb.h"
+#endif
+
 /* internationalisation */
 #include "gettext.h"
 #define _(String) gettext(String)
@@ -43,9 +47,8 @@
 /* other libraries */
 #include <getopt.h>
 
-
-/* String containing name the program is called with. */
-const char* program_name;
+/* app data */
+app_data_t app, *pApp;
 
 
 static void print_version() {
@@ -66,7 +69,7 @@ Homepage: %s\n"), "2008-2012", "http://dvdbackup.sourceforge.net/");
 
 static void print_help() {
 	/* TRANSLATORS: --help output 1 (synopsis) */
-	printf(_("Usage: %s [OPTION]...\n"), program_name);
+	printf(_("Usage: %s [OPTION]...\n"), app.program_name);
 
 	/* TRANSLATORS: --help output 2 (brief description)
 	   no-wrap */
@@ -172,7 +175,8 @@ int main(int argc, char* argv[]) {
 	char* targetdir = ".";
 
 	/* Temp filename,dirname */
-	char targetname[PATH_MAX];
+	char *targetname;
+	size_t targetname_length;
 	struct stat fileinfo;
 
 	/* The DVD main structure */
@@ -203,7 +207,23 @@ int main(int argc, char* argv[]) {
 	const char* shortopts = "hVIMFT:t:s:e:i:o:vn:a:r:p";
 
 	init_i18n();
-	program_name = argv[0];
+
+	app = (app_data_t) {
+		.program_name = argv[0],
+		.pid = getpid(),
+		.dev_path = "/dev/dvd",
+		.last_level = -1
+	};
+#ifdef ENABLE_LOGDB
+	dvdbackup_logdb_init(&app.conn);
+	if (!app.conn) {
+		fprintf(stderr, "failed to connect to database\n");
+		app.logcb = (dvd_logger_cb) { .pf_log = NULL };
+	} else {
+		app.logcb = (dvd_logger_cb) { .pf_log = dvdbackup_logdb };
+	}
+#endif
+	pApp = &app;
 
 	/* TODO: do isdigit check */
 
@@ -271,9 +291,9 @@ int main(int argc, char* argv[]) {
 	if(lose || optind < argc) {
 		/* Print error message and exit. */
 		if (optind < argc) {
-			fprintf(stderr, _("%s: extra operand: %s\n"), program_name, argv[optind]);
+			fprintf(stderr, _("%s: extra operand: %s\n"), app.program_name, argv[optind]);
 		}
-		fprintf(stderr, _("Try `%s --help' for more information.\n"), program_name);
+		fprintf(stderr, _("Try `%s --help' for more information.\n"), app.program_name);
 		exit (EXIT_FAILURE);
 	}
 
@@ -409,9 +429,15 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-
-
-	sprintf(targetname,"%s",targetdir);
+	// Reserve space for "<targetdir>/<title_name>/VIDEO_TS" and terminating "\0"
+	targetname_length = strlen(targetdir) + strlen(title_name) + 11;
+	targetname = malloc(targetname_length);
+	if (targetname == NULL) {
+		fprintf(stderr, _("Failed to allocate %zu bytes for a filename.\n"), targetname_length);
+		DVDClose(_dvd);
+		return 1;
+	}
+	snprintf(targetname, targetname_length, "%s", targetdir);
 
 	if (stat(targetname, &fileinfo) == 0) {
 		if (! S_ISDIR(fileinfo.st_mode)) {
@@ -521,5 +547,8 @@ int main(int argc, char* argv[]) {
 
 
 	DVDClose(_dvd);
+#ifdef ENABLE_LOGDB
+	dvdbackup_logdb_exit(app.conn);
+#endif
 	exit(return_code);
 }

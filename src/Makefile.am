@@ -4,6 +4,7 @@ bin_PROGRAMS = dvdbackup
 dvdbackup_SOURCES = main.c \
 	find-sector.c find-sector.h \
 	dvdbackup.c dvdbackup.h \
+	logger.c logdb.c \
 	gettext.h
 
 dvdbackup_CFLAGS = -DFIND_UNUSED $(AM_CFLAGS) $(DEPS_CFLAGS)

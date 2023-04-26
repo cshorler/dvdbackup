@@ -22,7 +22,15 @@
  */
 
 /* libdvdread */
+#include <config.h>
 #include <dvdread/dvd_reader.h>
+
+#ifdef ENABLE_LOGDB
+#include <libpq-fe.h>
+#endif
+
+#define _XOPEN_SOURCE 700
+#include <unistd.h>
 
 /* Flag for verbose mode */
 extern int verbose;
@@ -37,6 +45,19 @@ typedef enum {
 	STRATEGY_SKIP_UNUSED
 #endif
 } read_error_strategy_t;
+
+typedef struct app_data_s {
+	const char *program_name;
+	char *dev_path;
+	pid_t pid;
+	int last_level;
+#ifdef ENABLE_LOGDB
+	dvd_logger_cb logcb;
+	PGconn *conn;
+#endif
+} app_data_t;
+
+extern app_data_t *pApp;
 
 int DVDDisplayInfo(dvd_reader_t*, char*);
 int DVDGetTitleName(const char*, char*);
