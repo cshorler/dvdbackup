@@ -19,11 +19,6 @@
  */
 
 #include <config.h>
-#include "dvdbackup.h"
-
-/* internationalisation */
-#include "gettext.h"
-#define _(String) gettext(String)
 
 /* C standard libraries */
 #include <ctype.h>
@@ -44,6 +39,11 @@
 #include "dvdread_internal.h"
 #define PRIV(a) container_of(a, struct ifo_handle_private_s, handle)
 
+/* internationalisation */
+#include "gettext.h"
+#define _(String) gettext(String)
+
+#include "dvdbackup.h"
 #include "dvdlogger.h"
 
 #ifdef FIND_UNUSED
