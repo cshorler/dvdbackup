@@ -44,6 +44,8 @@
 #include "dvdread_internal.h"
 #define PRIV(a) container_of(a, struct ifo_handle_private_s, handle)
 
+#include "dvdlogger.h"
+
 #ifdef FIND_UNUSED
 #include "find-sector.h"
 #endif

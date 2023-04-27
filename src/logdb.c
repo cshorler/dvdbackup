@@ -8,7 +8,7 @@
 #include <libpq-fe.h>
 
 #include "dvdbackup.h"
-#include "logger.h"
+#include "dvdlogger.h"
 
 #define CONNINFO_MAX_SZ 128
 

@@ -3,7 +3,7 @@
 
 #include <dvdread/dvd_reader.h>
 
-#include "logger.h"
+#include "dvdlogger.h"
 
 static void DVDLogProgress(FILE *stream, const char *fmt, va_list ap_) {
 	va_list ap;

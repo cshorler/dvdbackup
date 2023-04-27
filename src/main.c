@@ -20,6 +20,7 @@
 
 #include <config.h>
 #include "dvdbackup.h"
+#include "dvdlogger.h"
 
 #ifdef ENABLE_LOGDB
 #include "logdb.h"
