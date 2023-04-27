@@ -391,7 +391,7 @@ int main(int argc, char* argv[]) {
 		exit(1);
 	}
 #ifdef DEBUG
-	fprintf(stderr,"After args\n");
+	XLog4(pApp, "After args");
 #endif
 
 
@@ -486,7 +486,7 @@ int main(int argc, char* argv[]) {
 
 
 #ifdef DEBUG
-	fprintf(stderr,"After dirs\n");
+	XLog4(pApp, "After dirs");
 #endif
 
 
@@ -499,7 +499,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 #ifdef DEBUG
-	fprintf(stderr,"After Mirror\n");
+	XLog4(pApp, "After Mirror");
 #endif
 
 
@@ -513,7 +513,7 @@ int main(int argc, char* argv[]) {
 
 	}
 #ifdef DEBUG
-	fprintf(stderr,"After Title Set\n");
+	XLog4(pApp, "After Title Set");
 #endif
 
 
