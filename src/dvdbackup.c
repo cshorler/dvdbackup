@@ -187,7 +187,8 @@ static int DVDWriteCells(dvd_reader_t * dvd, int cell_start_sector[],
 	int vob = 1;
 
 	/* Temp filename,dirname */
-	char targetname[PATH_MAX];
+	char *targetname;
+	size_t targetname_length;
 
 	/* Write buffer */
 
@@ -225,10 +226,18 @@ static int DVDWriteCells(dvd_reader_t * dvd, int cell_start_sector[],
 	fprintf(stderr,"DVDWriteCells: vob files are %d\n", number_of_vob_files);
 #endif
 
+	// Reserve space for "<targetdir>/<title_name>/VIDEO_TS/VTS_XX_X.VOB" and terminating "\0"
+	targetname_length = strlen(targetdir) + strlen(title_name) + 24;
+	targetname = malloc(targetname_length);
+	if (targetname == NULL) {
+		XLog0(pApp, _("Failed to allocate %zu bytes for a filename."), targetname_length);
+		return 1;
+	}
+
 	/* Remove all old files silently if they exists */
 
 	for ( i = 0 ; i < 10 ; i++ ) {
-		sprintf(targetname,"%s/%s/VIDEO_TS/VTS_%02i_%i.VOB",targetdir, title_name, title_set, i + 1);
+		snprintf(targetname, targetname_length, "%s/%s/VIDEO_TS/VTS_%02i_%i.VOB", targetdir, title_name, title_set, i + 1);
 #ifdef DEBUG
 		fprintf(stderr,"DVDWriteCells: file is %s\n", targetname);
 #endif
@@ -245,9 +254,10 @@ static int DVDWriteCells(dvd_reader_t * dvd, int cell_start_sector[],
 	/* Create VTS_XX_X.VOB */
 	if (title_set == 0) {
 		fprintf(stderr,_("Do not try to copy chapters from the VMG domain; there are none.\n"));
+		free(targetname);
 		return(1);
 	} else {
-		sprintf(targetname,"%s/%s/VIDEO_TS/VTS_%02i_%i.VOB",targetdir, title_name, title_set, vob);
+		snprintf(targetname, targetname_length, "%s/%s/VIDEO_TS/VTS_%02i_%i.VOB", targetdir, title_name, title_set, vob);
 	}
 
 #ifdef DEBUG
@@ -256,6 +266,7 @@ static int DVDWriteCells(dvd_reader_t * dvd, int cell_start_sector[],
 
 	if ((buffer = (unsigned char *)malloc(BUFFER_SIZE * DVD_VIDEO_LB_LEN * sizeof(unsigned char))) == NULL) {
 		fprintf(stderr, _("Out of memory copying %s\n"), targetname);
+		free(targetname);
 		return(1);
 	}
 
@@ -267,6 +278,7 @@ static int DVDWriteCells(dvd_reader_t * dvd, int cell_start_sector[],
 	if ((streamout = open(targetname, O_WRONLY | O_CREAT | O_APPEND, 0666)) == -1) {
 		fprintf(stderr, _("Error creating %s\n"), targetname);
 		perror(PACKAGE);
+		free(targetname);
 		return(1);
 	}
 
@@ -279,6 +291,7 @@ static int DVDWriteCells(dvd_reader_t * dvd, int cell_start_sector[],
 		fprintf(stderr, _("Failed opening TITLE VOB\n"));
 		free(buffer);
 		close(streamout);
+		free(targetname);
 		return(1);
 	}
 
@@ -302,6 +315,7 @@ static int DVDWriteCells(dvd_reader_t * dvd, int cell_start_sector[],
 				free(buffer);
 				DVDCloseFile(dvd_file);
 				close(streamout);
+				free(targetname);
 				return(1);
 			}
 			if (have_read < to_read) {
@@ -311,6 +325,7 @@ static int DVDWriteCells(dvd_reader_t * dvd, int cell_start_sector[],
 				fprintf(stderr, _("Error writing TITLE VOB\n"));
 				free(buffer);
 				close(streamout);
+				free(targetname);
 				return(1);
 			}
 #ifdef DEBUG
@@ -329,10 +344,11 @@ static int DVDWriteCells(dvd_reader_t * dvd, int cell_start_sector[],
 				close(streamout);
 				vob = vob + 1;
 				size = 0;
-				sprintf(targetname,"%s/%s/VIDEO_TS/VTS_%02i_%i.VOB",targetdir, title_name, title_set, vob);
+				snprintf(targetname, targetname_length, "%s/%s/VIDEO_TS/VTS_%02i_%i.VOB", targetdir, title_name, title_set, vob);
 				if ((streamout = open(targetname, O_WRONLY | O_CREAT | O_APPEND, 0666)) == -1) {
 					fprintf(stderr, _("Error creating %s\n"), targetname);
 					perror(PACKAGE);
+					free(targetname);
 					return(1);
 				}
 			}
@@ -342,6 +358,7 @@ static int DVDWriteCells(dvd_reader_t * dvd, int cell_start_sector[],
 	DVDCloseFile(dvd_file);
 	free(buffer);
 	close(streamout);
+	free(targetname);
 
 	return(0);
 }
@@ -993,8 +1010,10 @@ static int DVDCopyTitleVobX(dvd_reader_t * dvd, title_set_info_t * title_set_inf
 	int i;
 
 	/* Temp filename,dirname */
-	char filename[PATH_MAX] = "VIDEO_TS.VOB";
-	char targetname[PATH_MAX];
+	// filename is either "VIDEO_TS.VOB" or "VTS_XX_X.VOB" and terminating "\0"
+	char filename[13] = "VIDEO_TS.VOB";
+	char *targetname;
+	size_t targetname_length;
 	struct stat fileinfo;
 
 	/* File Handler */
@@ -1049,7 +1068,14 @@ static int DVDCopyTitleVobX(dvd_reader_t * dvd, title_set_info_t * title_set_inf
 		fprintf(stderr,_("Do not try to copy a Title VOB from the VMG domain; there are none.\n"));
 		return(1);
 	} else {
-		sprintf(targetname,"%s/%s/VIDEO_TS/VTS_%02i_%i.VOB",targetdir, title_name, title_set, vob);
+		// Reserve space for "<targetdir>/<title_name>/VIDEO_TS/<filename>" and terminating "\0"
+		targetname_length = strlen(targetdir) + strlen(title_name) + strlen(filename) + 12;
+		targetname = malloc(targetname_length);
+		if (targetname == NULL) {
+			XLog0(pApp, _("Failed to allocate %zu bytes for a filename."), targetname_length);
+			return 1;
+		}
+		snprintf(targetname, targetname_length, "%s/%s/VIDEO_TS/%s", targetdir, title_name, filename);
 	}
 
 
@@ -1059,6 +1085,7 @@ static int DVDCopyTitleVobX(dvd_reader_t * dvd, title_set_info_t * title_set_inf
 		tsize = title_set_info->title_set[title_set].size_vob[i];
 		if (tsize%DVD_VIDEO_LB_LEN != 0) {
 			fprintf(stderr, _("The Title VOB number %d of title set %d does not have a valid DVD size\n"), i + 1, title_set);
+			free(targetname);
 			return(1);
 		} else {
 			offset = offset + tsize/DVD_VIDEO_LB_LEN;
@@ -1075,11 +1102,13 @@ static int DVDCopyTitleVobX(dvd_reader_t * dvd, title_set_info_t * title_set_inf
 		if (! S_ISREG(fileinfo.st_mode)) {
 			/* TRANSLATORS: The sentence starts with "The title file %s is not valid[...]" */
 			fprintf(stderr,_("The %s %s is not valid, it may be a directory.\n"), _("title file"), targetname);
+			free(targetname);
 			return(1);
 		} else {
 			if ((streamout = open(targetname, O_WRONLY | O_TRUNC, 0666)) == -1) {
 				fprintf(stderr, _("Error opening %s\n"), targetname);
 				perror(PACKAGE);
+				free(targetname);
 				return(1);
 			}
 		}
@@ -1087,6 +1116,7 @@ static int DVDCopyTitleVobX(dvd_reader_t * dvd, title_set_info_t * title_set_inf
 		if ((streamout = open(targetname, O_WRONLY | O_CREAT, 0666)) == -1) {
 			fprintf(stderr, _("Error creating %s\n"), targetname);
 			perror(PACKAGE);
+			free(targetname);
 			return(1);
 		}
 	}
@@ -1094,6 +1124,7 @@ static int DVDCopyTitleVobX(dvd_reader_t * dvd, title_set_info_t * title_set_inf
 	if ((dvd_file = DVDOpenFile(dvd, title_set, DVD_READ_TITLE_VOBS))== 0) {
 		fprintf(stderr, _("Failed opening TITLE VOB\n"));
 		close(streamout);
+		free(targetname);
 		return(1);
 	}
 
@@ -1101,6 +1132,7 @@ static int DVDCopyTitleVobX(dvd_reader_t * dvd, title_set_info_t * title_set_inf
 
 	DVDCloseFile(dvd_file);
 	close(streamout);
+	free(targetname);
 	return result;
 }
 
@@ -1108,8 +1140,10 @@ static int DVDCopyTitleVobX(dvd_reader_t * dvd, title_set_info_t * title_set_inf
 static int DVDCopyMenu(dvd_reader_t * dvd, title_set_info_t * title_set_info, int title_set, char * targetdir,char * title_name, read_error_strategy_t errorstrat) {
 
 	/* Temp filename,dirname */
-	char filename[PATH_MAX] = "VIDEO_TS.VOB";
-	char targetname[PATH_MAX];
+	// filename is either "VIDEO_TS.VOB" or "VTS_XX_0.VOB" and terminating "\0"
+	char filename[13] = "VIDEO_TS.VOB";
+	char *targetname;
+	size_t targetname_length;
 	struct stat fileinfo;
 
 	/* File Handler */
@@ -1146,8 +1180,15 @@ static int DVDCopyMenu(dvd_reader_t * dvd, title_set_info_t * title_set_info, in
 		return(1);
 	}
 
+	// Reserve space for "<targetdir>/<title_name>/VIDEO_TS/<filename>" and terminating "\0"
+	targetname_length = strlen(targetdir) + strlen(title_name) + strlen(filename) + 12;
+	targetname = malloc(targetname_length);
+	if (targetname == NULL) {
+		XLog0(pApp, _("Failed to allocate %zu bytes for a filename."), targetname_length);
+		return 1;
+	}
 	/* Create VIDEO_TS.VOB or VTS_XX_0.VOB */
-	sprintf(targetname,"%s/%s/VIDEO_TS/%s",targetdir, title_name, filename);
+	snprintf(targetname, targetname_length, "%s/%s/VIDEO_TS/%s", targetdir, title_name, filename);
 
 	if (stat(targetname, &fileinfo) == 0) {
 		/* TRANSLATORS: The sentence starts with "The menu file %s exists[...]" */
@@ -1156,12 +1197,14 @@ static int DVDCopyMenu(dvd_reader_t * dvd, title_set_info_t * title_set_info, in
 			/* TRANSLATORS: The sentence starts with "The menu file %s is not valid[...]" */
 			fprintf(stderr,_("The %s %s is not valid, it may be a directory.\n"), _("menu file"), targetname);
 			DVDCloseFile(dvd_file);
+			free(targetname);
 			return(1);
 		} else {
 			if ((streamout = open(targetname, O_WRONLY | O_TRUNC, 0666)) == -1) {
 				fprintf(stderr, _("Error opening %s\n"), targetname);
 				perror(PACKAGE);
 				DVDCloseFile(dvd_file);
+				free(targetname);
 				return(1);
 			}
 		}
@@ -1170,6 +1213,7 @@ static int DVDCopyMenu(dvd_reader_t * dvd, title_set_info_t * title_set_info, in
 			fprintf(stderr, _("Error creating %s\n"), targetname);
 			perror(PACKAGE);
 			DVDCloseFile(dvd_file);
+			free(targetname);
 			return(1);
 		}
 	}
@@ -1182,6 +1226,7 @@ static int DVDCopyMenu(dvd_reader_t * dvd, title_set_info_t * title_set_info, in
 
 	DVDCloseFile(dvd_file);
 	close(streamout);
+	free(targetname);
 	return result;
 
 }
@@ -1189,7 +1234,9 @@ static int DVDCopyMenu(dvd_reader_t * dvd, title_set_info_t * title_set_info, in
 
 static int DVDCopyIfoBup(dvd_reader_t* dvd, title_set_info_t* title_set_info, int title_set, char* targetdir, char* title_name) {
 	/* Temp filename, dirname */
-	char targetname_ifo[PATH_MAX], targetname_bup[PATH_MAX];
+	char *targetname_ifo;
+	char *targetname_bup;
+	size_t string_length;
 	struct stat fileinfo;
 
 	/* Write buffer */
@@ -1218,14 +1265,26 @@ static int DVDCopyIfoBup(dvd_reader_t* dvd, title_set_info_t* title_set_info, in
 		}
 	}
 
+	// Reserve space for "<targetdir>/<title_name>/VIDEO_TS/VIDEO_TS.IFO" or
+	// "<targetdir>/<title_name>/VIDEO_TS/VTS_XX_0.IFO" and terminating "\0"
+	string_length = strlen(targetdir) + strlen(title_name) + 24;
+	targetname_ifo = malloc(string_length);
+	targetname_bup = malloc(string_length);
+	if (targetname_ifo == NULL || targetname_bup == NULL) {
+		XLog0(pApp, _("Failed to allocate %zu bytes for a filename."), string_length);
+		free(targetname_ifo);
+		free(targetname_bup);
+		return 1;
+	}
+
 	/* Create VIDEO_TS.IFO or VTS_XX_0.IFO */
 
 	if (title_set == 0) {
-		sprintf(targetname_ifo,"%s/%s/VIDEO_TS/VIDEO_TS.IFO",targetdir, title_name);
-		sprintf(targetname_bup,"%s/%s/VIDEO_TS/VIDEO_TS.BUP",targetdir, title_name);
+		snprintf(targetname_ifo, string_length, "%s/%s/VIDEO_TS/VIDEO_TS.IFO", targetdir, title_name);
+		snprintf(targetname_bup, string_length, "%s/%s/VIDEO_TS/VIDEO_TS.BUP", targetdir, title_name);
 	} else {
-		sprintf(targetname_ifo,"%s/%s/VIDEO_TS/VTS_%02i_0.IFO",targetdir, title_name, title_set);
-		sprintf(targetname_bup,"%s/%s/VIDEO_TS/VTS_%02i_0.BUP",targetdir, title_name, title_set);
+		snprintf(targetname_ifo, string_length, "%s/%s/VIDEO_TS/VTS_%02i_0.IFO", targetdir, title_name, title_set);
+		snprintf(targetname_bup, string_length, "%s/%s/VIDEO_TS/VTS_%02i_0.BUP", targetdir, title_name, title_set);
 	}
 
 	if (stat(targetname_ifo, &fileinfo) == 0) {
@@ -1234,6 +1293,8 @@ static int DVDCopyIfoBup(dvd_reader_t* dvd, title_set_info_t* title_set_info, in
 		if (! S_ISREG(fileinfo.st_mode)) {
 			/* TRANSLATORS: The sentence starts with "The IFO file %s is not valid[...]" */
 			fprintf(stderr,_("The %s %s is not valid, it may be a directory.\n"), _("IFO file"), targetname_ifo);
+			free(targetname_ifo);
+			free(targetname_bup);
 			return(1);
 		}
 	}
@@ -1244,6 +1305,8 @@ static int DVDCopyIfoBup(dvd_reader_t* dvd, title_set_info_t* title_set_info, in
 		if (! S_ISREG(fileinfo.st_mode)) {
 			/* TRANSLATORS: The sentence starts with "The BUP file %s is not valid[...]" */
 			fprintf(stderr,_("The %s %s is not valid, it may be a directory.\n"), _("BUP file"), targetname_bup);
+			free(targetname_ifo);
+			free(targetname_bup);
 			return(1);
 		}
 	}
@@ -1253,6 +1316,8 @@ static int DVDCopyIfoBup(dvd_reader_t* dvd, title_set_info_t* title_set_info, in
 		perror(PACKAGE);
 		ifoClose(ifo_file);
 		free(buffer);
+		free(targetname_ifo);
+		free(targetname_bup);
 		close(streamout_ifo);
 		close(streamout_bup);
 		return 1;
@@ -1263,6 +1328,8 @@ static int DVDCopyIfoBup(dvd_reader_t* dvd, title_set_info_t* title_set_info, in
 		perror(PACKAGE);
 		ifoClose(ifo_file);
 		free(buffer);
+		free(targetname_ifo);
+		free(targetname_bup);
 		close(streamout_ifo);
 		close(streamout_bup);
 		return 1;
@@ -1274,6 +1341,8 @@ static int DVDCopyIfoBup(dvd_reader_t* dvd, title_set_info_t* title_set_info, in
 		fprintf(stderr, _("Failed opening IFO for title set %d\n"), title_set);
 		ifoClose(ifo_file);
 		free(buffer);
+		free(targetname_ifo);
+		free(targetname_bup);
 		close(streamout_ifo);
 		close(streamout_bup);
 		return 1;
@@ -1286,6 +1355,8 @@ static int DVDCopyIfoBup(dvd_reader_t* dvd, title_set_info_t* title_set_info, in
 		perror(PACKAGE);
 		ifoClose(ifo_file);
 		free(buffer);
+		free(targetname_ifo);
+		free(targetname_bup);
 		close(streamout_ifo);
 		close(streamout_bup);
 		return 1;
@@ -1297,6 +1368,8 @@ static int DVDCopyIfoBup(dvd_reader_t* dvd, title_set_info_t* title_set_info, in
 		fprintf(stderr, _("Error reading IFO for title set %d\n"), title_set);
 		ifoClose(ifo_file);
 		free(buffer);
+		free(targetname_ifo);
+		free(targetname_bup);
 		close(streamout_ifo);
 		close(streamout_bup);
 		return 1;
@@ -1307,6 +1380,8 @@ static int DVDCopyIfoBup(dvd_reader_t* dvd, title_set_info_t* title_set_info, in
 		fprintf(stderr, _("Error writing %s\n"),targetname_ifo);
 		ifoClose(ifo_file);
 		free(buffer);
+		free(targetname_ifo);
+		free(targetname_bup);
 		close(streamout_ifo);
 		close(streamout_bup);
 		return 1;
@@ -1316,11 +1391,15 @@ static int DVDCopyIfoBup(dvd_reader_t* dvd, title_set_info_t* title_set_info, in
 		fprintf(stderr, _("Error writing %s\n"),targetname_bup);
 		ifoClose(ifo_file);
 		free(buffer);
+		free(targetname_ifo);
+		free(targetname_bup);
 		close(streamout_ifo);
 		close(streamout_bup);
 		return 1;
 	}
 
+	free(targetname_ifo);
+	free(targetname_bup);
 	return 0;
 }
 
